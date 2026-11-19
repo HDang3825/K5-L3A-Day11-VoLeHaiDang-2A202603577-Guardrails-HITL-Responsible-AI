@@ -66,7 +66,7 @@ def create_red_agent_default():
             name="red_agent_default",
             instruction=RED_DEFAULT_INSTRUCTION,
             app_name="red_agent_default",
-            temperature=0.7,
+            temperature=0.0,
             model=soft,
         )
         print(
@@ -76,6 +76,7 @@ def create_red_agent_default():
         return agent, runner
 
     if red_uses_gemini():
+        from google.genai import types
         from google.adk.agents import llm_agent
         from google.adk import runners
 
@@ -83,6 +84,7 @@ def create_red_agent_default():
             model=soft,
             name="red_agent_default",
             instruction=RED_DEFAULT_INSTRUCTION,
+            generate_content_config=types.GenerateContentConfig(temperature=0.0),
         )
         runner = runners.InMemoryRunner(agent=agent, app_name="red_agent_default")
         print(

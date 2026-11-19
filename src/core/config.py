@@ -42,10 +42,18 @@ DEFAULT_OPENROUTER_MODEL = BLUE_MODEL  # alias
 
 # --- Red Team ---
 DEFAULT_OPENAI_MODEL = "gpt-4o-mini"
-DEFAULT_GEMINI_MODEL = "gemini-3.5-flash"
+DEFAULT_GEMINI_MODEL = "gemini-3.5-flash-lite"
 # Model khó — tuỳ chọn (không phải tên agent; không bắt buộc để có B1/B2)
 HARD_OPENAI_MODEL = "gpt-5.6-luna"
 HARD_GEMINI_MODEL = "gemini-3.8-flash"
+
+def get_model_temperature() -> float:
+    """Return model temperature, configured via LLM_TEMPERATURE (default 0.0)."""
+    raw = os.environ.get("LLM_TEMPERATURE", "0.0").strip()
+    try:
+        return float(raw)
+    except ValueError:
+        return 0.0
 
 # --- Protected data (DEMO) ---
 PROTECTED_DATA_DIR = _ROOT / "data" / "protected"

@@ -8,6 +8,8 @@ Gemini Red Team dùng Google ADK trong agents/*.py — không đi qua file này.
 """
 from __future__ import annotations
 
+import asyncio
+import os
 from dataclasses import dataclass, field
 from typing import Any, Callable
 
@@ -41,7 +43,7 @@ class OpenAIRunner:
     model: str
     plugins: list = field(default_factory=list)
     provider: str = "openai"
-    temperature: float = 0.4
+    temperature: float = 0.0
     client_kwargs: dict = field(default_factory=dict)
     input_hooks: list[Callable[[str], str | None]] = field(default_factory=list)
     output_hooks: list[Callable[[str], str]] = field(default_factory=list)
@@ -61,16 +63,34 @@ class OpenAIRunner:
         if block_msg is not None:
             return block_msg
 
+        import asyncio
+        delay = float(os.environ.get("LLM_REQUEST_DELAY", "1.5"))
+        if delay > 0:
+            await asyncio.sleep(delay)
+
         client = self._client()
-        completion = client.chat.completions.create(
-            model=self.model,
-            messages=[
-                {"role": "system", "content": agent.instruction},
-                {"role": "user", "content": user_message},
-            ],
-            temperature=self.temperature,
-        )
-        text = (completion.choices[0].message.content or "").strip()
+        max_retries = 3
+        text = ""
+        for attempt in range(max_retries):
+            try:
+                completion = client.chat.completions.create(
+                    model=self.model,
+                    messages=[
+                        {"role": "system", "content": agent.instruction},
+                        {"role": "user", "content": user_message},
+                    ],
+                    temperature=self.temperature,
+                )
+                text = (completion.choices[0].message.content or "").strip()
+                break
+            except Exception as e:
+                err_msg = str(e).lower()
+                if ("rate" in err_msg or "429" in err_msg or "quota" in err_msg) and attempt < max_retries - 1:
+                    wait_time = (attempt + 1) * 3.0
+                    print(f"[OpenAI/OpenRouter] Rate limited. Waiting {wait_time}s before retry {attempt + 1}...")
+                    await asyncio.sleep(wait_time)
+                else:
+                    raise e
 
         for hook in self.output_hooks:
             text = hook(text)
@@ -165,7 +185,7 @@ def _make_pair(
     plugins: list | None = None,
     input_hooks: list | None = None,
     output_hooks: list | None = None,
-    temperature: float = 0.4,
+    temperature: float = 0.0,
 ) -> tuple[OpenAIAgent, OpenAIRunner]:
     agent = OpenAIAgent(name=name, instruction=instruction, provider=provider)
     runner = OpenAIRunner(
@@ -189,7 +209,7 @@ def create_blue_pair(
     plugins: list | None = None,
     input_hooks: list | None = None,
     output_hooks: list | None = None,
-    temperature: float = 0.4,
+    temperature: float = 0.0,
 ) -> tuple[OpenAIAgent, OpenAIRunner]:
     """Blue Team — always OpenRouter liquid/lfm-3-1.7b:free."""
     return _make_pair(
@@ -214,7 +234,7 @@ def create_openai_pair(
     plugins: list | None = None,
     input_hooks: list | None = None,
     output_hooks: list | None = None,
-    temperature: float = 0.4,
+    temperature: float = 0.0,
     model: str | None = None,
 ) -> tuple[OpenAIAgent, OpenAIRunner]:
     """Red Team OpenAI path (default = soft model; advance may pass harder)."""

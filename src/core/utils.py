@@ -15,6 +15,13 @@ async def chat_with_agent(agent, runner, user_message: str, session_id=None):
         text = await runner.chat(agent, user_message)
         return text, None
 
+    import asyncio
+    import os
+
+    delay = float(os.environ.get("LLM_REQUEST_DELAY", "1.5"))
+    if delay > 0:
+        await asyncio.sleep(delay)
+
     from google.genai import types
 
     user_id = "student"

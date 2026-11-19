@@ -400,6 +400,7 @@ def create_red_agent_advance():
             model=advance_model,
             name="red_agent_advance",
             instruction=RED_ADVANCE_INSTRUCTION,
+            generate_content_config=types.GenerateContentConfig(temperature=0.0),
         )
         runner = runners.InMemoryRunner(
             agent=agent,
